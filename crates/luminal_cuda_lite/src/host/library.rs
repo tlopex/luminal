@@ -11,12 +11,12 @@ use anyhow::{Context, Result, anyhow, ensure};
 /// Clones share the resolved artifact; SDK builds use its persistent cache.
 /// Construct a new instance to resolve updated source/configuration files.
 #[derive(Debug, Clone)]
-pub struct TvmFfiLibrary {
+pub struct TVMFFILibrary {
     path: PathBuf,
     built: Arc<Mutex<Option<PathBuf>>>,
 }
 
-impl TvmFfiLibrary {
+impl TVMFFILibrary {
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self {
             path: path.into(),
@@ -109,16 +109,16 @@ TVM_FFI_DLL_EXPORT_TYPED_FUNC(apply, Apply);
         .unwrap();
         let recipe = dir.0.join("provider.json");
         std::fs::write(&recipe, r#"{"name":"luminal_ffi_build_test","sources":["provider.cc"],"extra_include_paths":["include"]}"#).unwrap();
-        let library = TvmFfiLibrary::new(&recipe);
+        let library = TVMFFILibrary::new(&recipe);
         let artifact = library.resolve().unwrap();
         let modified = std::fs::metadata(&artifact).unwrap().modified().unwrap();
         assert_eq!(library.clone().resolve().unwrap(), artifact);
-        assert_eq!(TvmFfiLibrary::new(&recipe).resolve().unwrap(), artifact);
+        assert_eq!(TVMFFILibrary::new(&recipe).resolve().unwrap(), artifact);
         assert_eq!(
             std::fs::metadata(&artifact).unwrap().modified().unwrap(),
             modified
         );
-        let module = TvmFfiLibrary::new(&artifact).load().unwrap();
+        let module = TVMFFILibrary::new(&artifact).load().unwrap();
         let function = module.get_function("apply").unwrap();
         let (a, b) = (12i64, 3i64);
         let result = function
@@ -131,7 +131,7 @@ TVM_FFI_DLL_EXPORT_TYPED_FUNC(apply, Apply);
             r#"{"name":"invalid_provider","sources":["absent.cc"]}"#,
         )
         .unwrap();
-        let error = TvmFfiLibrary::new(invalid).resolve().unwrap_err();
+        let error = TVMFFILibrary::new(invalid).resolve().unwrap_err();
         assert!(error.to_string().contains("absent.cc"), "{error:#}");
     }
 }

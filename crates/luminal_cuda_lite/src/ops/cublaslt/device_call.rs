@@ -342,13 +342,13 @@ pub fn prepare(
     Ok(PreparedCall {
         #[cfg(feature = "cublaslt-tvm-ffi")]
         ffi: {
-            static LIBRARY: OnceLock<crate::host::TvmFfiLibrary> = OnceLock::new();
+            static LIBRARY: OnceLock<crate::host::TVMFFILibrary> = OnceLock::new();
             let library = match LIBRARY.get() {
                 Some(library) => library,
                 None => {
                     let path = std::env::var("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY")
                         .context("set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to the adapter library or build.json recipe")?;
-                    LIBRARY.get_or_init(|| crate::host::TvmFfiLibrary::new(path))
+                    LIBRARY.get_or_init(|| crate::host::TVMFFILibrary::new(path))
                 }
             };
             let module = library.load().context("loading cuBLASLt TVM FFI entry")?;

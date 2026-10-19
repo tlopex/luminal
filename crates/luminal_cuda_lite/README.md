@@ -86,32 +86,18 @@ public library descriptors and capture a new child graph. The executor never
 inspects or edits cuBLASLt's private kernel arguments.
 
 The `tvm-ffi` feature lets CUDA HostOps call external libraries through TVM FFI.
-The SDK is re-exported as `luminal_cuda_lite::tvm_ffi`. Use
-`host::TvmFfiLibrary::new(config_path).load()` and resolve the function during
-preparation, then call
-`unsafe { capture.call_tvm_ffi(&function, &args) }` during recording. Arguments
-and return values follow the library's signature; calls use the capture stream.
+During preparation, use `host::TVMFFILibrary::new(path).load()` to load the module,
+resolve `module.get_function(name)`, and retain the function. During recording,
+call `unsafe { capture.call_tvm_ffi(&function, &args) }`. Arguments and return
+values follow the library's signature; calls use the capture stream. The SDK
+is re-exported as `luminal_cuda_lite::tvm_ffi`.
 
-Install `apache-tvm-ffi==0.1.15` and make `tvm-ffi-config` available on `PATH`.
-The configuration can be a prebuilt library or a `.json` recipe containing
-keyword arguments for `tvm_ffi.cpp.build`. Recipes automatically build on first
-preparation and use the SDK's persistent cache. Cloned operations share the
-resolved artifact. Paths are relative to the recipe; strings expand environment
-variables. Source builds also require Ninja and the compiler/toolkit. Select
-Python with `LUMINAL_TVM_FFI_PYTHON` and the cache with `TVM_FFI_CACHE_DIR`.
-
-The [cuBLASLt recipe](src/ops/cublaslt/build.json) can be selected with
-`LUMINAL_CUBLASLT_TVM_FFI_LIBRARY` under `cublaslt-tvm-ffi`. The
-[FlashInfer recipe](src/ops/flashinfer/build.json) can be passed to
-`ops::flashinfer::gemm(config_path, scratch_bytes)`. Set `CUDA_ROOT` to the
-toolkit root and `FLASHINFER_SRC` to FlashInfer's source checkout for its recipe;
-the SDK locates nvcc using `CUDA_HOME`/`CUDA_PATH` or `PATH`. Recipes supply the
-provider-specific sources and flags; the shared builder does not select libraries.
-
-For FlashInfer GEMM, append `ops::flashinfer::gemm(config_path, scratch_bytes)`
-to the registry passed to `CudaRuntime::load_with_registry`. The candidate
-describes BF16 inputs with FP32 arithmetic and output; its module documents the
-upstream TVM FFI exports.
+`path` accepts a prebuilt library or a `.json` build configuration containing
+keyword arguments for `tvm_ffi.cpp.build`. Source builds run automatically before
+capture and use the SDK's persistent cache. Install `apache-tvm-ffi==0.1.15` and
+make `tvm-ffi-config` available on `PATH`; source builds also require Ninja and
+the compiler/toolkit. Build configuration details are documented in
+[`TVMFFILibrary`](src/host/library.rs).
 
 During bucket profiling, dynamic payloads supplied at another size are truncated
 or zero-extended to the representative size for timing. Serving requires exact

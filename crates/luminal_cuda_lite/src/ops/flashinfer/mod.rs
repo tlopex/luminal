@@ -16,7 +16,7 @@
 
 mod device_call;
 
-use crate::host::TvmFfiLibrary;
+use crate::host::TVMFFILibrary;
 use std::path::PathBuf;
 
 use luminal::buffer_tensor_ir::{BufferTensorIrOp, OpSlotNames};
@@ -31,7 +31,7 @@ use crate::{CudaOpInterface, HostOp, RegisteredOp};
 /// `scratch_bytes` is the maximum workspace the algorithm query may select.
 pub fn gemm(library: impl Into<PathBuf>, scratch_bytes: usize) -> RegisteredOp {
     let op = FlashInferGemm {
-        library: TvmFfiLibrary::new(library),
+        library: TVMFFILibrary::new(library),
         scratch_bytes,
         dps: false,
     };
@@ -40,7 +40,7 @@ pub fn gemm(library: impl Into<PathBuf>, scratch_bytes: usize) -> RegisteredOp {
 
 #[derive(Debug, Clone)]
 struct FlashInferGemm {
-    library: TvmFfiLibrary,
+    library: TVMFFILibrary,
     scratch_bytes: usize,
     dps: bool,
 }

@@ -4,7 +4,7 @@ use luminal::buffer_tensor_ir::BufferTensorIrOp;
 #[cfg(feature = "tvm-ffi")]
 mod library;
 #[cfg(feature = "tvm-ffi")]
-pub use library::TvmFfiLibrary;
+pub use library::TVMFFILibrary;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceRange {

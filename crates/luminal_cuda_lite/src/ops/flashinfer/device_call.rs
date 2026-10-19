@@ -6,7 +6,7 @@ use luminal::layouts::RightMajorContiguousElementLayout;
 use tvm_ffi::tvm_ffi_sys::dlpack::{DLDataTypeCode, DLTensor};
 use tvm_ffi::{Any, AnyView, DLDataType, DLDevice, DLDeviceType, Function, Tensor, TensorView};
 
-use crate::host::{CaptureCtx, DeviceRange, HostOpContext, PreparedHostOp, TvmFfiLibrary};
+use crate::host::{CaptureCtx, DeviceRange, HostOpContext, PreparedHostOp, TVMFFILibrary};
 
 struct LtHandle(sys::cublasLtHandle_t);
 impl Drop for LtHandle {
@@ -28,7 +28,7 @@ struct PreparedGemm {
 }
 
 pub(super) unsafe fn prepare(
-    library: &TvmFfiLibrary,
+    library: &TVMFFILibrary,
     ctx: &HostOpContext<'_>,
 ) -> Result<Box<dyn PreparedHostOp>> {
     ensure!(
