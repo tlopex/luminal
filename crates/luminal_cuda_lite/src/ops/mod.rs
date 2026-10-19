@@ -37,6 +37,8 @@ pub mod cublaslt;
 pub mod div;
 pub mod exp;
 pub mod exp2;
+#[cfg(feature = "tvm-ffi")]
+pub mod flashinfer;
 pub mod floor;
 pub mod gather;
 pub mod index_map_apply_materialize;

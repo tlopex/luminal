@@ -1,0 +1,36 @@
+; D = cast_f32(A[m,k]) @ transpose(cast_f32(B[n,k])). The explicit casts
+; admit FP32 accumulation, without substituting for BF16 arithmetic.
+; FlashInfer's native entry consumes dense row-major tensors and int geometry.
+(rule
+  (
+    (= ?out (LogicalHelperMatrixMultiply
+      (LogicalCast ?a (F32))
+      (LogicalHelperMatrixTranspose (LogicalCast ?b (F32)))))
+    (= (dtype-of ?a) (Bf16))
+    (= (dtype-of ?b) (Bf16))
+    (= (dtype-of ?out) (F32))
+    (= ?ashape (ShapeLit (IntExprCons ?m (IntExprCons ?k (IntExprNil)))))
+    (= ?bshape (ShapeLit (IntExprCons ?n (IntExprCons ?k (IntExprNil)))))
+    (= ?dshape (ShapeLit (IntExprCons ?m (IntExprCons ?n (IntExprNil)))))
+    (= (shape-of ?a) ?ashape)
+    (= (shape-of ?b) ?bshape)
+    (= (shape-of ?out) ?dshape)
+    (= ?m (IntLit ?mi)) (> ?mi 0) (<= ?mi 2147483647)
+    (= ?n (IntLit ?ni)) (> ?ni 0) (<= ?ni 2147483647)
+    (= ?k (IntLit ?ki)) (> ?ki 0) (<= ?ki 2147483647)
+    (= ?av (LayoutTensorLit ?a (RightMajorContiguousElementLayoutLit ?ashape (BitWidthLit 16))))
+    (= ?bv (LayoutTensorLit ?b (RightMajorContiguousElementLayoutLit ?bshape (BitWidthLit 16))))
+    (= ?dl (RightMajorContiguousElementLayoutLit ?dshape (BitWidthLit 32)))
+    (= ?dv (LayoutTensorLit ?out ?dl))
+    (= (injectivity-of ?dv) (Injective))
+  )
+  (
+    (union
+      (LayoutTensorOpLit
+        (LayoutTensorCons ?av (LayoutTensorCons ?bv (LayoutTensorNil)))
+        (LayoutTensorCons ?dv (LayoutTensorNil)))
+      (LayoutTensorOpFlashInferGemm ?av ?bv ?dl))
+  )
+  :ruleset backend
+  :name "cuda_lite/flashinfer/egg/match_gemm: BF16 operands with FP32 arithmetic"
+)

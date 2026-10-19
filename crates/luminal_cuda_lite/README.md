@@ -93,6 +93,11 @@ and return values follow the library's signature; calls use the capture stream.
 
 Install `apache-tvm-ffi==0.1.15` and make `tvm-ffi-config` available on `PATH`.
 
+For FlashInfer GEMM, append `ops::flashinfer::gemm(library_path, scratch_bytes)`
+to the registry passed to `CudaRuntime::load_with_registry`. The candidate
+describes BF16 inputs with FP32 arithmetic and output; its module documents the
+upstream TVM FFI exports and standalone library build.
+
 During bucket profiling, dynamic payloads supplied at another size are truncated
 or zero-extended to the representative size for timing. Serving requires exact
 live payload sizes. Profiling includes staging and readback, matching serving.
