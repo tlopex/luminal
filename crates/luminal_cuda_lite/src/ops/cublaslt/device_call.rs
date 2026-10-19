@@ -340,6 +340,15 @@ pub fn prepare(
         }
     };
     Ok(PreparedCall {
+        #[cfg(feature = "tvm-ffi")]
+        ffi: {
+            let module = tvm_ffi::Module::load_from_file(env!("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY"))
+                .map_err(|e| anyhow!("loading cuBLASLt TVM FFI entry: {e}"))?;
+            let function = module
+                .get_function("cublaslt_matmul")
+                .map_err(|e| anyhow!("resolving cuBLASLt TVM FFI entry: {e}"))?;
+            (function, module)
+        },
         desc,
         a_layout,
         b_layout,
@@ -357,6 +366,9 @@ pub fn prepare(
 
 /// Descriptors and selected algorithm remain alive alongside their captured graph.
 pub struct PreparedCall {
+    // Keep the exported function and its library alive through every replay.
+    #[cfg(feature = "tvm-ffi")]
+    ffi: (tvm_ffi::Function, tvm_ffi::Module),
     desc: Desc,
     a_layout: Layout,
     b_layout: Layout,
@@ -375,27 +387,67 @@ impl PreparedHostOp for PreparedCall {
         let guard = handle()?
             .lock()
             .map_err(|_| anyhow!("cuBLASLt handle mutex poisoned"))?;
-        unsafe {
-            lt::matmul(
-                guard.raw,
-                self.desc.raw,
-                (&ALPHA) as *const f32 as *const _,
-                self.beta as *const f32 as *const _,
-                self.a_ptr as *const _,
-                self.a_layout.raw,
-                self.b_ptr as *const _,
-                self.b_layout.raw,
-                self.c_ptr as *const _,
-                self.c_layout.raw,
-                self.d_ptr as *mut _,
-                self.d_layout.raw,
-                &self.algo,
-                self.workspace.ptr as *mut _,
-                self.workspace.bytes,
-                capture.stream().cu_stream() as *mut _,
-            )
+        #[cfg(feature = "tvm-ffi")]
+        {
+            // The same arguments as lt::matmul below; no new op or layout rules.
+            // Integer arguments transport opaque addresses to the native wrapper.
+            // SAFETY: record's contract keeps every descriptor and allocation
+            // live, and capture owns the stream for this call and its replays.
+            let args = [
+                guard.raw as i64,
+                self.desc.raw as i64,
+                std::ptr::from_ref(&ALPHA) as i64,
+                std::ptr::from_ref(self.beta) as i64,
+                self.a_ptr as i64,
+                self.a_layout.raw as i64,
+                self.b_ptr as i64,
+                self.b_layout.raw as i64,
+                self.c_ptr as i64,
+                self.c_layout.raw as i64,
+                self.d_ptr as i64,
+                self.d_layout.raw as i64,
+                std::ptr::from_ref(&self.algo) as i64,
+                self.workspace.ptr as i64,
+                i64::try_from(self.workspace.bytes)?,
+                capture.stream().cu_stream() as i64,
+            ];
+            let status: i64 = self
+                .ffi
+                .0
+                .call_packed(&args.each_ref().map(tvm_ffi::AnyView::from))
+                .map_err(|e| anyhow!("cuBLASLt TVM FFI capture: {e}"))?
+                .try_into()
+                .map_err(|e| anyhow!("cuBLASLt TVM FFI status: {e}"))?;
+            anyhow::ensure!(
+                status == 0,
+                "cublasLtMatmul capture failed with status {status}"
+            );
+            Ok(())
         }
-        .map_err(|e| anyhow!("cublasLtMatmul capture failed: {e:?}"))
+        #[cfg(not(feature = "tvm-ffi"))]
+        {
+            unsafe {
+                lt::matmul(
+                    guard.raw,
+                    self.desc.raw,
+                    (&ALPHA) as *const f32 as *const _,
+                    self.beta as *const f32 as *const _,
+                    self.a_ptr as *const _,
+                    self.a_layout.raw,
+                    self.b_ptr as *const _,
+                    self.b_layout.raw,
+                    self.c_ptr as *const _,
+                    self.c_layout.raw,
+                    self.d_ptr as *mut _,
+                    self.d_layout.raw,
+                    &self.algo,
+                    self.workspace.ptr as *mut _,
+                    self.workspace.bytes,
+                    capture.stream().cu_stream() as *mut _,
+                )
+            }
+            .map_err(|e| anyhow!("cublasLtMatmul capture failed: {e:?}"))
+        }
     }
 }
 

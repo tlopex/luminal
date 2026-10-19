@@ -85,6 +85,20 @@ cuBLASLt uses this interface for all DPS forms. Geometry changes rebuild its
 public library descriptors and capture a new child graph. The executor never
 inspects or edits cuBLASLt's private kernel arguments.
 
+The optional `tvm-ffi` feature routes that same cuBLASLt call through a TVM FFI
+export. Its matcher, registry, DPS, aliases, descriptors, and selected algorithm
+are shared with the ordinary path. `tvm_ffi.cc` only forwards the existing native
+arguments; it contains no GEMM implementation. Cargo builds the small shared
+library in `OUT_DIR`, where it must remain available when running the binary.
+Requires Linux and `apache-tvm-ffi==0.1.12` (`tvm-ffi-config` on PATH):
+
+```bash
+export CUDA_ROOT=/usr/local/cuda-13.1
+export PATH="$CUDA_ROOT/bin:$PATH"
+export LD_LIBRARY_PATH="$(tvm-ffi-config --libdir):$CUDA_ROOT/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+cargo test -p luminal_cuda_lite --features tvm-ffi --test cublaslt_contracts
+```
+
 During bucket profiling, dynamic payloads supplied at another size are truncated
 or zero-extended to the representative size for timing. Serving requires exact
 live payload sizes. Profiling includes staging and readback, matching serving.
