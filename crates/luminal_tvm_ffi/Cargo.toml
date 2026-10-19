@@ -1,0 +1,23 @@
+[package]
+name = "luminal_tvm_ffi"
+version = "0.1.0"
+edition.workspace = true
+rust-version = "1.91"
+publish = false
+description = "Optional TVM FFI library operations for Luminal's CUDA runtime"
+
+[features]
+default = []
+device = ["luminal_cuda_lite/device", "dep:cudarc", "dep:tvm-ffi"]
+
+[dependencies]
+anyhow = "1"
+luminal = { path = "../.." }
+luminal_cuda_lite = { path = "../luminal_cuda_lite" }
+cudarc = { git = "https://github.com/luminal-ai/cudarc.git", rev = "a42f3897b6d00aded8e6ac7ad258c72d8bad5596", optional = true, features = ["cuda-version-from-build-system", "fallback-latest"] }
+# Match the native headers/runtime supplied by apache-tvm-ffi==0.1.12.
+tvm-ffi = { git = "https://github.com/apache/tvm-ffi.git", rev = "3050b0a7bd48e04f853027c5fa1f5ab7bc20b856", optional = true }
+
+[[example]]
+name = "gemm"
+required-features = ["device"]

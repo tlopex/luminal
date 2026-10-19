@@ -1,0 +1,38 @@
+; Semantic equation: out[M,N] = sum_k A[M,K] * B[K,N]. The core helper
+; recognizes/expands precisely that broadcast-multiply-reduce computation.
+; Layout and dimension premises are obligations of this implementation, not
+; Rust-side graph rewrites or assumptions about an e-class's preferred spelling.
+(rule
+  (
+    (= ?out (LogicalHelperMatrixMultiply ?a ?b))
+    (= (dtype-of ?a) (F32))
+    (= (dtype-of ?b) (F32))
+    (= (dtype-of ?out) (F32))
+    (= ?a_shape (shape-of ?a))
+    (= ?b_shape (shape-of ?b))
+    (= ?out_shape (shape-of ?out))
+    (= ?a_shape (ShapeLit (IntExprCons ?m (IntExprCons ?k (IntExprNil)))))
+    (= ?b_shape (ShapeLit (IntExprCons ?k (IntExprCons ?n (IntExprNil)))))
+    (= ?out_shape (ShapeLit (IntExprCons ?m (IntExprCons ?n (IntExprNil)))))
+    (= ?bits (bits-of (F32)))
+    (= ?a_lt (LayoutTensorLit ?a (RightMajorContiguousElementLayoutLit ?a_shape ?bits)))
+    (= ?b_lt (LayoutTensorLit ?b (RightMajorContiguousElementLayoutLit ?b_shape ?bits)))
+    (= ?out_layout (RightMajorContiguousElementLayoutLit ?out_shape ?bits))
+    (= ?out_lt (LayoutTensorLit ?out ?out_layout))
+    (= (injectivity-of ?out_lt) (Injective))
+    (>= (lower-bound-of ?m) (bigint 1))
+    (>= (lower-bound-of ?k) (bigint 1))
+    (>= (lower-bound-of ?n) (bigint 1))
+    (<= (upper-bound-of ?m) (bigint 2147483647))
+    (<= (upper-bound-of ?k) (bigint 2147483647))
+    (<= (upper-bound-of ?n) (bigint 2147483647))
+  )
+  (
+    (let ?op (LayoutTensorOpLit
+      (LayoutTensorCons ?a_lt (LayoutTensorCons ?b_lt (LayoutTensorNil)))
+      (LayoutTensorCons ?out_lt (LayoutTensorNil))))
+    (union ?op (LayoutTensorOpTvmFfiGemm ?a_lt ?b_lt ?out_layout))
+  )
+  :ruleset backend
+  :name "tvm_ffi/gemm: contiguous FP32 rank-2 matrix multiplication"
+)
