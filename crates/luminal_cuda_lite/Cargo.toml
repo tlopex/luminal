@@ -14,8 +14,10 @@ default = []
 # Train 3: the cuBLASLt host-call dispatch rides the same feature —
 # cudarc's `cublaslt` module (result layer) joins the driver/NVRTC set.
 device = ["dep:cudarc", "cudarc/cublaslt"]
-# Route the existing cuBLASLt HostOp through TVM FFI.
+# General TVM FFI support for external HostOp implementations.
 tvm-ffi = ["device", "dep:tvm-ffi"]
+# Demonstrate the common interface using the existing cuBLASLt HostOp.
+cublaslt-tvm-ffi = ["tvm-ffi"]
 
 [dependencies]
 luminal = { path = "../.." }
@@ -35,8 +37,8 @@ colored = "2.0.4"
 # backend needs to run on `torch.cuda.current_stream()`. crates.io 0.19.8 has
 # no way to wrap a stream it did not create.
 cudarc = { git = "https://github.com/luminal-ai/cudarc.git", rev = "a42f3897b6d00aded8e6ac7ad258c72d8bad5596", optional = true, features = ["cuda-version-from-build-system", "fallback-latest"] }
-# Match the headers/runtime supplied by apache-tvm-ffi==0.1.12.
-tvm-ffi = { git = "https://github.com/apache/tvm-ffi.git", rev = "3050b0a7bd48e04f853027c5fa1f5ab7bc20b856", optional = true }
+# v0.1.15: match the headers/runtime supplied by apache-tvm-ffi==0.1.15.
+tvm-ffi = { git = "https://github.com/apache/tvm-ffi.git", rev = "88d9f7068717a8dc0df7d2ad06e1567dfc24472f", optional = true }
 
 [dev-dependencies]
 # Step B: the reference inventory the subset test pins against now lives

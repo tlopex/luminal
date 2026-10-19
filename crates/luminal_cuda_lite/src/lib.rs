@@ -91,6 +91,9 @@ pub use ops::{
 };
 pub use runtime::{CudaArena, CudaRuntime};
 pub use search::{CompileOptions, Evaluator, SearchOutcome, harness_search_options};
+/// The matching SDK for constructing scalar, tensor, and other packed arguments.
+#[cfg(feature = "tvm-ffi")]
+pub use tvm_ffi;
 
 /// PLAN-TRANSPARENT (M4 Phase 5): claimable WITHOUT a kernel iff the
 /// op's DECLARED EFFECTS prove the planner folds it — no operand ever

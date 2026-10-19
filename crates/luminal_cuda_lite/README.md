@@ -85,19 +85,42 @@ cuBLASLt uses this interface for all DPS forms. Geometry changes rebuild its
 public library descriptors and capture a new child graph. The executor never
 inspects or edits cuBLASLt's private kernel arguments.
 
-The optional `tvm-ffi` feature routes that same cuBLASLt call through a TVM FFI
-export. Its matcher, registry, DPS, aliases, descriptors, and selected algorithm
-are shared with the ordinary path. `tvm_ffi.cc` only forwards the existing native
-arguments; it contains no GEMM implementation. Cargo builds the small shared
-library in `OUT_DIR`, where it must remain available when running the binary.
-Requires Linux and `apache-tvm-ffi==0.1.12` (`tvm-ffi-config` on PATH):
+The optional `tvm-ffi` feature provides a common calling interface for external
+CUDA HostOps. The matching SDK is re-exported as `luminal_cuda_lite::tvm_ffi`.
+During preparation, load the provider's shared library with
+`tvm_ffi::Module::load_from_file(path)`, resolve `get_function(name)`, and retain
+the returned `Function` in the prepared operation. During recording, call
+`unsafe { capture.call_tvm_ffi(&function, &args) }`. This accepts the provider's
+own `AnyView` arguments (including tensor views and scalars) and returns `Any`.
+It scopes TVM FFI's current CUDA stream to the capture stream and restores the
+previous stream on success or error. The provider must support CUDA graph
+capture and honor this stream; explicit stream arguments must use it too.
+
+The separate `cublaslt-tvm-ffi` feature demonstrates this interface using the
+existing cuBLASLt HostOp. Its matcher, registry, DPS, aliases, descriptors, and
+selected algorithm are shared with the ordinary path. `tvm_ffi.cc` only forwards
+the existing native arguments; it contains no GEMM implementation. Only this
+feature builds the small shared library in `OUT_DIR`, where it must remain
+available when running the binary.
+
+Requires Linux and `apache-tvm-ffi==0.1.15` (`tvm-ffi-config` on PATH).
+The Rust SDK is pinned to the matching upstream `v0.1.15` release commit:
 
 ```bash
+python -m pip install apache-tvm-ffi==0.1.15
 export CUDA_ROOT=/usr/local/cuda-13.1
 export PATH="$CUDA_ROOT/bin:$PATH"
 export LD_LIBRARY_PATH="$(tvm-ffi-config --libdir):$CUDA_ROOT/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-cargo test -p luminal_cuda_lite --features tvm-ffi --test cublaslt_contracts
+cargo test -p luminal_cuda_lite --features tvm-ffi --lib host::ffi_tests
+cargo test -p luminal_cuda_lite --features cublaslt-tvm-ffi --test cublaslt_contracts
 ```
+
+Other libraries use the common `tvm-ffi` feature without enabling the cuBLASLt
+example. They still need their own argument/buffer/stream adaptation and
+accurate layout, DPS, scratch, and alias contracts. A library already exporting
+TVM FFI functions needs no forwarding C++ wrapper. Register an additional
+HostOp candidate through the existing registry and egglog rules to let search
+choose between libraries. The calling interface does not infer their semantics.
 
 During bucket profiling, dynamic payloads supplied at another size are truncated
 or zero-extended to the representative size for timing. Serving requires exact

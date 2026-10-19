@@ -340,14 +340,14 @@ pub fn prepare(
         }
     };
     Ok(PreparedCall {
-        #[cfg(feature = "tvm-ffi")]
+        #[cfg(feature = "cublaslt-tvm-ffi")]
         ffi: {
             let module = tvm_ffi::Module::load_from_file(env!("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY"))
                 .map_err(|e| anyhow!("loading cuBLASLt TVM FFI entry: {e}"))?;
-            let function = module
+            // TVM FFI's exported function retains a strong reference to its module.
+            module
                 .get_function("cublaslt_matmul")
-                .map_err(|e| anyhow!("resolving cuBLASLt TVM FFI entry: {e}"))?;
-            (function, module)
+                .map_err(|e| anyhow!("resolving cuBLASLt TVM FFI entry: {e}"))?
         },
         desc,
         a_layout,
@@ -367,8 +367,8 @@ pub fn prepare(
 /// Descriptors and selected algorithm remain alive alongside their captured graph.
 pub struct PreparedCall {
     // Keep the exported function and its library alive through every replay.
-    #[cfg(feature = "tvm-ffi")]
-    ffi: (tvm_ffi::Function, tvm_ffi::Module),
+    #[cfg(feature = "cublaslt-tvm-ffi")]
+    ffi: tvm_ffi::Function,
     desc: Desc,
     a_layout: Layout,
     b_layout: Layout,
@@ -387,7 +387,7 @@ impl PreparedHostOp for PreparedCall {
         let guard = handle()?
             .lock()
             .map_err(|_| anyhow!("cuBLASLt handle mutex poisoned"))?;
-        #[cfg(feature = "tvm-ffi")]
+        #[cfg(feature = "cublaslt-tvm-ffi")]
         {
             // The same arguments as lt::matmul below; no new op or layout rules.
             // Integer arguments transport opaque addresses to the native wrapper.
@@ -411,20 +411,18 @@ impl PreparedHostOp for PreparedCall {
                 i64::try_from(self.workspace.bytes)?,
                 capture.stream().cu_stream() as i64,
             ];
-            let status: i64 = self
-                .ffi
-                .0
-                .call_packed(&args.each_ref().map(tvm_ffi::AnyView::from))
-                .map_err(|e| anyhow!("cuBLASLt TVM FFI capture: {e}"))?
-                .try_into()
-                .map_err(|e| anyhow!("cuBLASLt TVM FFI status: {e}"))?;
+            let status: i64 = unsafe {
+                capture.call_tvm_ffi(&self.ffi, &args.each_ref().map(tvm_ffi::AnyView::from))
+            }?
+            .try_into()
+            .map_err(|e| anyhow!("cuBLASLt TVM FFI status: {e}"))?;
             anyhow::ensure!(
                 status == 0,
                 "cublasLtMatmul capture failed with status {status}"
             );
             Ok(())
         }
-        #[cfg(not(feature = "tvm-ffi"))]
+        #[cfg(not(feature = "cublaslt-tvm-ffi"))]
         {
             unsafe {
                 lt::matmul(
