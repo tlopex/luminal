@@ -132,46 +132,6 @@ fn content_tag(files: &[(String, PathBuf)]) -> String {
     format!("{hash:016x}")
 }
 
-fn build_tvm_ffi(out_dir: &std::path::Path, cuda_include: &std::path::Path) {
-    use std::process::Command;
-    let source = "src/ops/cublaslt/tvm_ffi.cc";
-    println!("cargo:rerun-if-changed={source}");
-    println!("cargo:rerun-if-env-changed=CXX");
-    let flags = Command::new("tvm-ffi-config")
-        .args(["--cxxflags", "--ldflags", "--libs"])
-        .output()
-        .expect("tvm-ffi requires apache-tvm-ffi==0.1.15 and tvm-ffi-config on PATH");
-    assert!(flags.status.success(), "tvm-ffi-config failed");
-    let flags = String::from_utf8(flags.stdout).expect("TVM FFI compiler flags must be UTF-8");
-    let library = out_dir.join("libluminal_cublaslt_tvm_ffi.so");
-    let cuda_lib = cuda_include.parent().unwrap().join("lib64");
-    let status = Command::new(std::env::var_os("CXX").unwrap_or_else(|| "c++".into()))
-        .args([
-            "-std=c++17",
-            "-O2",
-            "-shared",
-            "-fPIC",
-            "-fvisibility=hidden",
-        ])
-        .arg(source)
-        .arg("-o")
-        .arg(&library)
-        .args(flags.split_whitespace())
-        .arg(format!("-I{}", cuda_include.display()))
-        .arg(format!("-L{}", cuda_lib.display()))
-        .arg("-lcublasLt")
-        .status()
-        .expect("building the cuBLASLt TVM FFI entry");
-    assert!(
-        status.success(),
-        "building the cuBLASLt TVM FFI entry failed"
-    );
-    println!(
-        "cargo:rustc-env=LUMINAL_CUBLASLT_TVM_FFI_LIBRARY={}",
-        library.display()
-    );
-}
-
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     for var in [
@@ -206,9 +166,6 @@ fn main() {
              Set LUMINAL_CUDA_HEADERS_DIR to an include tree.",
             "/usr/local/cuda/include"
         );
-    }
-    if std::env::var_os("CARGO_FEATURE_CUBLASLT_TVM_FFI").is_some() {
-        build_tvm_ffi(&out_dir, &roots[0]);
     }
     let files = closure(&["cuda_fp16.h", "cuda_bf16.h"], &roots, &nv);
     let tag = content_tag(&files);

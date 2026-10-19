@@ -342,7 +342,9 @@ pub fn prepare(
     Ok(PreparedCall {
         #[cfg(feature = "cublaslt-tvm-ffi")]
         ffi: {
-            let module = tvm_ffi::Module::load_from_file(env!("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY"))
+            let library = std::env::var("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY")
+                .context("set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to the cuBLASLt TVM FFI library")?;
+            let module = tvm_ffi::Module::load_from_file(library)
                 .map_err(|e| anyhow!("loading cuBLASLt TVM FFI entry: {e}"))?;
             // TVM FFI's exported function retains a strong reference to its module.
             module
