@@ -85,32 +85,13 @@ cuBLASLt uses this interface for all DPS forms. Geometry changes rebuild its
 public library descriptors and capture a new child graph. The executor never
 inspects or edits cuBLASLt's private kernel arguments.
 
-The optional `tvm-ffi` feature provides a common calling interface for external
-CUDA HostOps. The matching SDK is re-exported as `luminal_cuda_lite::tvm_ffi`.
-During preparation, load the provider's shared library with
-`tvm_ffi::Module::load_from_file(path)`, resolve `get_function(name)`, and retain
-the returned `Function` in the prepared operation. During recording, call
-`unsafe { capture.call_tvm_ffi(&function, &args) }`. This accepts the provider's
-own `AnyView` arguments (including tensor views and scalars) and returns `Any`.
-It scopes TVM FFI's current CUDA stream to the capture stream and restores the
-previous stream on success or error. The provider must support CUDA graph
-capture and honor this stream; explicit stream arguments must use it too.
+The `tvm-ffi` feature lets CUDA HostOps call external libraries through TVM FFI.
+The SDK is re-exported as `luminal_cuda_lite::tvm_ffi`. Load the library and
+resolve the function during preparation, then call
+`unsafe { capture.call_tvm_ffi(&function, &args) }` during recording. Arguments
+and return values follow the library's signature; calls use the capture stream.
 
-With `cublaslt-tvm-ffi`, the existing cuBLASLt HostOp calls through this interface.
-`src/ops/cublaslt/tvm_ffi.cc` exports the ABI adapter to `cublasLtMatmul`. Cargo
-builds its shared library in `OUT_DIR`, where it must remain available at runtime.
-
-Requires Linux and `apache-tvm-ffi==0.1.15` (`tvm-ffi-config` on PATH).
-The Rust SDK is pinned to the matching upstream `v0.1.15` release commit:
-
-```bash
-python -m pip install apache-tvm-ffi==0.1.15
-export CUDA_ROOT=/usr/local/cuda-13.1
-export PATH="$CUDA_ROOT/bin:$PATH"
-export LD_LIBRARY_PATH="$(tvm-ffi-config --libdir):$CUDA_ROOT/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-cargo test -p luminal_cuda_lite --features tvm-ffi --lib host::ffi_tests
-cargo test -p luminal_cuda_lite --features cublaslt-tvm-ffi --test cublaslt_contracts
-```
+Install `apache-tvm-ffi==0.1.15` and make `tvm-ffi-config` available on `PATH`.
 
 During bucket profiling, dynamic payloads supplied at another size are truncated
 or zero-extended to the representative size for timing. Serving requires exact
