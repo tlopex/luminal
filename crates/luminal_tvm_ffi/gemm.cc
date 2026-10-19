@@ -1,4 +1,4 @@
-// A destination-passing GEMM exported through TVM FFI, independent of Luminal.
+// TVM FFI export called by Luminal's GEMM HostOp.
 #include <cublas_v2.h>
 #include <tvm/ffi/container/tensor.h>
 #include <tvm/ffi/extra/c_env_api.h>
@@ -100,5 +100,5 @@ void Gemm(int64_t handle_address, TensorView a, TensorView b, TensorView out,
 }
 }  // namespace
 
-// Generates the ABI symbol __tvm_ffi_gemm in gemm.so.
+// Generates the ABI symbol __tvm_ffi_gemm.
 TVM_FFI_DLL_EXPORT_TYPED_FUNC(gemm, Gemm);

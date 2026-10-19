@@ -16,7 +16,7 @@ pub(crate) struct LoadedFunction {
     function: Function,
 }
 
-fn load(library: &crate::gemm::Library) -> Result<LoadedFunction> {
+fn load(library: &crate::Library) -> Result<LoadedFunction> {
     let mut cache = library.loaded.borrow_mut();
     if let Some(loaded) = cache.as_ref() {
         return Ok(loaded.clone());
@@ -178,7 +178,7 @@ impl PreparedHostOp for PreparedGemm {
 }
 
 pub(crate) unsafe fn prepare(
-    library: &crate::gemm::Library,
+    library: &crate::Library,
     ctx: &HostOpContext<'_>,
 ) -> Result<Box<dyn PreparedHostOp>> {
     ensure!(
