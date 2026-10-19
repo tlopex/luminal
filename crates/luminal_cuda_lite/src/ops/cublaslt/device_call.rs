@@ -342,10 +342,16 @@ pub fn prepare(
     Ok(PreparedCall {
         #[cfg(feature = "cublaslt-tvm-ffi")]
         ffi: {
-            let library = std::env::var("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY")
-                .context("set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to the cuBLASLt TVM FFI library")?;
-            let module = tvm_ffi::Module::load_from_file(library)
-                .map_err(|e| anyhow!("loading cuBLASLt TVM FFI entry: {e}"))?;
+            static LIBRARY: OnceLock<crate::host::TvmFfiLibrary> = OnceLock::new();
+            let library = match LIBRARY.get() {
+                Some(library) => library,
+                None => {
+                    let path = std::env::var("LUMINAL_CUBLASLT_TVM_FFI_LIBRARY")
+                        .context("set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to the adapter library or build.json recipe")?;
+                    LIBRARY.get_or_init(|| crate::host::TvmFfiLibrary::new(path))
+                }
+            };
+            let module = library.load().context("loading cuBLASLt TVM FFI entry")?;
             // TVM FFI's exported function retains a strong reference to its module.
             module
                 .get_function("cublaslt_matmul")

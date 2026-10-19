@@ -93,7 +93,7 @@ fn bf16_buffer(values: &[f32]) -> HostBuffer {
 }
 
 /// Run with --ignored and FLASHINFER_GEMM_LIBRARY pointing to the upstream
-/// v0.7.2 mm_bf16_cublaslt TVM FFI module. No Python/PyTorch caller is involved.
+/// v0.7.2 mm_bf16_cublaslt TVM FFI module or its JSON build recipe.
 #[test]
 #[ignore = "requires the FlashInfer GEMM TVM FFI library; set FLASHINFER_GEMM_LIBRARY"]
 fn upstream_gemm_is_elected_captured_and_replayed_with_new_inputs() {

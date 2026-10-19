@@ -16,7 +16,7 @@ default = []
 device = ["dep:cudarc", "cudarc/cublaslt"]
 # General TVM FFI support for external HostOp implementations.
 tvm-ffi = ["device", "dep:tvm-ffi"]
-# Use the cuBLASLt TVM FFI library at LUMINAL_CUBLASLT_TVM_FFI_LIBRARY.
+# Use the TVM FFI library/build recipe at LUMINAL_CUBLASLT_TVM_FFI_LIBRARY.
 cublaslt-tvm-ffi = ["tvm-ffi"]
 
 [dependencies]

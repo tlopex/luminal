@@ -1,0 +1,8 @@
+{
+  "name": "luminal_flashinfer_gemm",
+  "sources": ["${FLASHINFER_SRC}/csrc/mm_bf16_cublaslt.cu"],
+  "extra_include_paths": ["${FLASHINFER_SRC}/include", "${FLASHINFER_SRC}/csrc"],
+  "extra_cuda_cflags": ["-DENABLE_BF16", "-DENABLE_FP8"],
+  "extra_ldflags": ["-L${CUDA_ROOT}/lib64", "-lcublas", "-lcublasLt"],
+  "backend": "cuda"
+}

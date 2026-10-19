@@ -1,6 +1,4 @@
 //! Argument adaptation for FlashInfer's upstream TVM FFI GEMM functions.
-use std::path::Path;
-
 use anyhow::{Context, Result, anyhow, ensure};
 use cudarc::cublaslt::{result as lt, sys};
 use luminal::dtype::PlanDtype;
@@ -8,7 +6,7 @@ use luminal::layouts::RightMajorContiguousElementLayout;
 use tvm_ffi::tvm_ffi_sys::dlpack::{DLDataTypeCode, DLTensor};
 use tvm_ffi::{Any, AnyView, DLDataType, DLDevice, DLDeviceType, Function, Tensor, TensorView};
 
-use crate::host::{CaptureCtx, DeviceRange, HostOpContext, PreparedHostOp};
+use crate::host::{CaptureCtx, DeviceRange, HostOpContext, PreparedHostOp, TvmFfiLibrary};
 
 struct LtHandle(sys::cublasLtHandle_t);
 impl Drop for LtHandle {
@@ -30,7 +28,7 @@ struct PreparedGemm {
 }
 
 pub(super) unsafe fn prepare(
-    library: &Path,
+    library: &TvmFfiLibrary,
     ctx: &HostOpContext<'_>,
 ) -> Result<Box<dyn PreparedHostOp>> {
     ensure!(
@@ -80,12 +78,7 @@ pub(super) unsafe fn prepare(
         "FlashInferGemm shape mismatch"
     );
     ctx.stream.context().bind_to_thread()?;
-    let module = tvm_ffi::Module::load_from_file(
-        library
-            .to_str()
-            .context("FlashInfer library path must be UTF-8")?,
-    )
-    .map_err(|e| anyhow!("loading FlashInfer: {e}"))?;
+    let module = library.load().context("loading FlashInfer")?;
     let get_algos = module
         .get_function("mm_bf16_cublaslt_get_algos")
         .map_err(|e| anyhow!("resolving FlashInfer algorithm query: {e}"))?;

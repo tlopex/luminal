@@ -5,23 +5,18 @@
 //! and all GPU scratch comes from the runtime arena.
 //! Matching requires positive literal matrix extents fitting int32 geometry.
 //!
-//! With the `tvm-ffi` feature, append `flashinfer::gemm(library, scratch_bytes)`
-//! to the caller's registry. The library is built by FlashInfer, independently
-//! of Luminal. The exported ABI used here is FlashInfer v0.7.2's
+//! Append `flashinfer::gemm(library_or_recipe, scratch_bytes)` to the caller's
+//! registry. Execution requires the `tvm-ffi` feature. A `.json` recipe is built
+//! automatically during preparation through the shared TVM FFI SDK builder;
+//! a prebuilt library is loaded directly. The exported ABI is FlashInfer v0.7.2's
 //! [`csrc/mm_bf16_cublaslt.cu`](https://github.com/flashinfer-ai/flashinfer/blob/v0.7.2/csrc/mm_bf16_cublaslt.cu)
-//! (the cuBLASLt backend of `flashinfer.gemm.mm_bf16`). For a standalone library,
-//! set `FLASHINFER_SRC` to that source checkout and build with its SDK flags:
-//!
-//! ```sh
-//! nvcc -std=c++17 -shared -O2 -Xcompiler=-fPIC -DENABLE_BF16 -DENABLE_FP8 \
-//!   -I"$FLASHINFER_SRC/include" -I"$FLASHINFER_SRC/csrc" \
-//!   "$FLASHINFER_SRC/csrc/mm_bf16_cublaslt.cu" \
-//!   $(tvm-ffi-config --cxxflags --ldflags --libs) \
-//!   -L"$CUDA_ROOT/lib64" -lcublas -lcublasLt -o libflashinfer_gemm.so
-//! ```
+//! (the cuBLASLt backend of `flashinfer.gemm.mm_bf16`). To use this directory's
+//! `build.json`, set `FLASHINFER_SRC` to that checkout and `CUDA_ROOT` to the
+//! toolkit root. The SDK locates nvcc via `CUDA_HOME`/`CUDA_PATH` or `PATH`.
 
 mod device_call;
 
+use crate::host::TvmFfiLibrary;
 use std::path::PathBuf;
 
 use luminal::buffer_tensor_ir::{BufferTensorIrOp, OpSlotNames};
@@ -32,11 +27,11 @@ use luminal::layout_ir::{
 
 use crate::{CudaOpInterface, HostOp, RegisteredOp};
 
-/// Add a GEMM candidate using an externally built FlashInfer TVM FFI library.
+/// Add a GEMM candidate using a prebuilt library or automatic JSON build recipe.
 /// `scratch_bytes` is the maximum workspace the algorithm query may select.
 pub fn gemm(library: impl Into<PathBuf>, scratch_bytes: usize) -> RegisteredOp {
     let op = FlashInferGemm {
-        library: library.into(),
+        library: TvmFfiLibrary::new(library),
         scratch_bytes,
         dps: false,
     };
@@ -45,7 +40,7 @@ pub fn gemm(library: impl Into<PathBuf>, scratch_bytes: usize) -> RegisteredOp {
 
 #[derive(Debug, Clone)]
 struct FlashInferGemm {
-    library: PathBuf,
+    library: TvmFfiLibrary,
     scratch_bytes: usize,
     dps: bool,
 }

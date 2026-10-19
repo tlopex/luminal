@@ -1,0 +1,6 @@
+{
+  "name": "luminal_cublaslt",
+  "sources": ["tvm_ffi.cc"],
+  "extra_include_paths": ["${CUDA_ROOT}/include"],
+  "extra_ldflags": ["-L${CUDA_ROOT}/lib64", "-lcublasLt"]
+}

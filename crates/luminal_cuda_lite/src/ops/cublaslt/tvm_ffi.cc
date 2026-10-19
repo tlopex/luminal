@@ -1,6 +1,7 @@
 // Only an ABI adapter. Descriptors, algorithm, buffers, and scratch are prepared
 // by device_call.rs using Luminal's existing cuBLASLt HostOp contracts.
-// Build separately; set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to the shared library.
+// Set LUMINAL_CUBLASLT_TVM_FFI_LIBRARY to build.json for automatic compilation,
+// or to an existing shared library.
 #include <cublasLt.h>
 #include <tvm/ffi/function.h>
 

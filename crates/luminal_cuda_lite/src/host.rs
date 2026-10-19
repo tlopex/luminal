@@ -1,6 +1,11 @@
 //! Opaque library operations compiled into captured CUDA child graphs.
 use luminal::buffer_tensor_ir::BufferTensorIrOp;
 
+#[cfg(feature = "tvm-ffi")]
+mod library;
+#[cfg(feature = "tvm-ffi")]
+pub use library::TvmFfiLibrary;
+
 #[derive(Debug, Clone, Copy)]
 pub struct DeviceRange {
     pub ptr: u64,
